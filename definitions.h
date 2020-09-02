@@ -73,14 +73,6 @@ NTSTATUS NtCreateThreadEx(
     OUT LPVOID                lpBytesBuffer
 );
 
-// NTSTATUS NtQueueApcThread(
-//     HANDLE          ThreadHandle,
-//     PIO_APC_ROUTINE ApcRoutine,
-//     PVOID           NormalContext,
-//     PVOID           SystemArgument1,
-//     PVOID           SystemArgument2 
-// );
-
 NTSTATUS NtQueueApcThread(
     HANDLE           ThreadHandle, 
     PIO_APC_ROUTINE  ApcRoutine, 
@@ -93,48 +85,3 @@ NTAPI NtAlertResumeThread(
     IN HANDLE ThreadHandle,
     OUT PULONG SuspendCount
 );
-
-/*   Find the address of a loaded module by name   */
-UINT_PTR FindDLLAddress(wchar_t* searchDLL) {
-
-	PPEB Peb = NULL;
-	PPEB_LDR_DATA Loader = NULL;
-	PLIST_ENTRY Head = NULL;
-	PLIST_ENTRY Current = NULL;
-
-	// Get PEB address from GS:0x60 register
-	Peb = (PPEB)__readgsqword(0x60);
-
-	// PPEB_LDR_DATA contains information about the loaded modules for the process
-	Loader = (PPEB_LDR_DATA)(PBYTE)Peb->Ldr;
-
-	// The head of a doubly-linked list that contains the loaded modules for the process
-	Head = &Loader->InMemoryOrderModuleList;
-
-	Current = Head->Flink;
-
-	do {
-		// Retrieve address of InMemoryOrderLinks from Current, casted to PLDR_DATA_TABLE_ENTRY, using CONTAINING_RECORD macro
-		PLDR_DATA_TABLE_ENTRY dllEntry = CONTAINING_RECORD(Current, LDR_DATA_TABLE_ENTRY, InMemoryOrderLinks);
-
-		// Get the full DLL path as Unicode string
-		wchar_t* dllName = (wchar_t*)dllEntry->FullDllName.Buffer;
-
-		// Get the module base address
-		UINT_PTR dllAddress = (UINT_PTR)dllEntry->DllBase;
-
-		// Check if current DLL matches search DLL
-		wchar_t* result = wcsstr(dllName, searchDLL);
-
-		if (result != NULL)
-		{
-			return dllAddress;
-		}
-
-		// Move to the next module
-		Current = Current->Flink;
-	} while (Current != Head);
-    printf( "[!] Failed to find %ws!\n", searchDLL );
-
-	return 0;
-}
