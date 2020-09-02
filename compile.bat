@@ -1,0 +1,1 @@
+cl.exe /nologo /Oxs /Z7 /MT /W3 /GS- /permissive- /GS- /DNDEBUG  /Tc .\main.c /link /OUT:SeasideBishop.exe /MACHINE:x64
