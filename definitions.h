@@ -16,13 +16,15 @@ NTSTATUS NTAPI LdrGetDllHandle (
     IN PWSTR           DllPath OPTIONAL,
 	IN PULONG          DllCharacteristics OPTIONAL,
 	IN PUNICODE_STRING DllName,
-	OUT PVOID *  	   DllHandle );
+	OUT PVOID *  	   DllHandle
+);
 
 NTSTATUS NTAPI LdrGetProcedureAddress(
     IN PVOID  	    BaseAddress,
 	IN PANSI_STRING Name,
 	IN ULONG  	    Ordinal,
-	OUT PVOID *     ProcedureAddress ); 	
+	OUT PVOID *     ProcedureAddress 
+); 	
 
 NTSTATUS NtOpenProcess(
     OUT PHANDLE           ProcessHandle,
@@ -44,7 +46,7 @@ NTSTATUS NtCreateSection(
 NTSTATUS NtMapViewOfSection(
     HANDLE          SectionHandle,
     HANDLE          ProcessHandle,
-    PVOID           *BaseAddress,
+    PVOID *         BaseAddress,
     ULONG_PTR       ZeroBits,
     SIZE_T          CommitSize,
     PLARGE_INTEGER  SectionOffset,
@@ -82,6 +84,6 @@ NTSTATUS NtQueueApcThread(
 );
 
 NTAPI NtAlertResumeThread(
-    IN HANDLE ThreadHandle,
+    IN HANDLE  ThreadHandle,
     OUT PULONG SuspendCount
 );
