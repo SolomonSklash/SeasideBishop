@@ -65,7 +65,7 @@ int main( int argc, char *argv[] )
     HANDLE hSection = INVALID_HANDLE_VALUE;
     LARGE_INTEGER lnSectionSize;
     lnSectionSize.HighPart = 0;
-	lnSectionSize.LowPart  = 0x1000;
+    lnSectionSize.LowPart  = 0x1000;
     ntCallResult = NtCreateSection( &hSection, SECTION_MAP_READ | SECTION_MAP_WRITE | SECTION_MAP_EXECUTE,
                                     NULL, &lnSectionSize, PAGE_EXECUTE_READWRITE, SEC_COMMIT, NULL );
     if( !NT_SUCCESS( ntCallResult ) ) {
