@@ -5,6 +5,8 @@ A C port of b33f's UrbanBishop
 
 This repo is a port of [b33f's](https://github.com/FuzzySecurity) very neat C# shellcode loader [UrbanBishop](https://github.com/FuzzySecurity/Sharp-Suite/tree/master/UrbanBishop). [Rastamouse](https://github.com/rasta-mouse) also has a [port](https://github.com/rasta-mouse/RuralBishop) that makes use of D/Invoke. They did the heavy lifting on this, I simply rewrote it in C and made a few tweaks.
 
+My post about this project is [here](https://www.solomonsklash.io/seaside-bishop.html).
+
 ## Injection Overview
 
 SeasideBishop is a remote process shellcode injector. It uses only native Windows APIs, and only supports x64.
